@@ -38,6 +38,8 @@ then
 		# Это сериал
 		# Вытаскиваем имя сериала и его сезон
 		# Формируем путь сохранения из этих данных
+		# Пример папки сериала: Marvels_Agents_of_S_H_I_E_L_D
+		# Пример пути расположения файла: /mnt/data/media/serials/Marvels_Agents_of_S_H_I_E_L_D/Season_05/Marvels.Agents.of.S.H.I.E.L.D.S05E17.rus.LostFilm.TV.avi
 		SERIALNAME=$(echo $TR_TORRENT_NAME | grep -Eo '^(.*+).S[0-9].' | sed -r 's/(\.)/_/g' | sed -r 's/(_S[0-9].)//')
 		SEASON=$(echo $TR_TORRENT_NAME | grep -Eo 'S[0-9].' | grep -Eo '[0-9].')
 		SERIALPATH="/mnt/data/media/serials/$SERIALNAME/Season_$SEASON/"
@@ -48,7 +50,7 @@ then
 			mkdir -m 777 -p $SERIALPATH
 		fi
 
-		# Перемещаем файл силами самого Transmission
+		# Перемещаем файл силами самого Transmission, чтобы не останавливать раздачу
 		# mv -f $FILE $SERIALPATH # Если нет желания использовать Transmission
 		transmission-remote 192.168.88.21:9091 -n $TR_LOGIN:$TR_PASSWORD -t $TR_TORRENT_ID --move $SERIALPATH
 		
@@ -68,6 +70,8 @@ then
 			# Это фильм
 			# Пример названия фильма для сохранения: Дикий Запад (2018).mkv
 			# Пример названия 3D фильма для сохранения: Дикий Запад 3D (2018).mkv
+			# Пример пути расположения файла: /mnt/data/media/films/2018/Дикий Запад (2018).mkv
+			# Пример пути расположения файла: /mnt/data/media/films/3d/2018/Дикий Запад 3D (2018).mkv
 			# Вытаскиваем год фильма
 			YEAR=$(echo $TR_TORRENT_NAME | grep -Eo '\([0-9]+\)' | sed -r 's/(\(|\))//g')
 			
@@ -89,7 +93,7 @@ then
 				mkdir -m 777 -p $FILMPATH
 			fi
 
-			# Перемещаем файл силами самого Transmission
+			# Перемещаем файл силами самого Transmission, чтобы не останавливать раздачу
 			# mv -f $FILE $FILMPATH # Если нет желания использовать Transmission
 			transmission-remote 192.168.88.21:9091 -n $TR_LOGIN:$TR_PASSWORD -t $TR_TORRENT_ID --move $FILMPATH
 			
