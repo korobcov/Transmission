@@ -1,8 +1,17 @@
 #!/bin/bash
 
-# Torrent Done Script v0.0.5
+# Torrent Done Script v0.0.6
 # Скрипт для Transmission Daemon
 # Перемещение завершенных торрентов по папкам
+#
+# Протестировано на:
+# Debian GNU/Linux 9.4 (stretch)
+# transmission-daemon 2.92 (14714)
+#
+# Подключение:
+# редактированием конфигурационного файла settings.json
+# "script-torrent-done-enabled": true,
+# "script-torrent-done-filename": "/mypath/torrentdone.sh",
 #
 # Базовые переменные. Они передаются скрипту самим Transmission
 # =================================================================================
