@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Torrent Done Script v0.0.4
 # Скрипт для Transmission Daemon
 # Перемещение завершенных торрентов по папкам
 #
@@ -19,7 +20,7 @@ TR_LOGIN="user"
 TR_PASSWORD="12345"
 TR_TORRENT_DIR="$TR_TORRENT_DIR/"
 regex_ser="(LostFilm|TV|serial|Serial|S[0-9].E[0-9].|novafilm)"
-regex_film="(Film|BDRip|iTunes|WEBRip|BDRemux|)"
+regex_film="(Film|BDRip|iTunes|WEBRip|BDRemux)"
 regex_3d="(\s(3D|3d)\s)"
 
 # ВЫПОЛНЕНИЕ
