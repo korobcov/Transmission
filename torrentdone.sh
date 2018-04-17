@@ -15,9 +15,9 @@
 
 # Определяем дополнительные переменные
 PREF="transsaver:"
-#TR_TORRENT_DIR="$1"
+TR_LOGIN="user"
+TR_PASSWORD="12345"
 TR_TORRENT_DIR="$TR_TORRENT_DIR/"
-#TR_TORRENT_NAME="$2"
 regex_ser="(LostFilm|TV|serial|Serial|S[0-9].E[0-9].|novafilm)"
 regex_film="(Film|BDRip|iTunes|WEBRip|BDRemux|)"
 regex_3d="(\s(3D|3d)\s)"
@@ -38,7 +38,7 @@ then
 		# Это сериал. Просто сохраняем в папку сериалов
 		SERIALNAME=$(echo $TR_TORRENT_NAME | grep -Eo '^(.*+).S[0-9].' | sed -r 's/(\.)/_/g' | sed -r 's/(_S[0-9].)//')
 		SEASON=$(echo $TR_TORRENT_NAME | grep -Eo 'S[0-9].' | grep -Eo '[0-9].')
-		SERIALPATH="/mnt/data/media/serials/$SERIALNAME/$SEASON/"
+		SERIALPATH="/mnt/data/media/serials/$SERIALNAME/Season_$SEASON/"
 		# Проверяем есть ли уже такая дирректория
 		if ! [ -d $SERIALPATH ]; then
 			echo "$PREF Пути $SERIALPATH не существует. Создаем недостающие папки."
@@ -46,7 +46,9 @@ then
 		fi
 
 		# Перемещаем файл
-		mv -f $FILE $SERIALPATH
+		# mv -f $FILE $SERIALPATH
+		transmission-remote 192.168.88.21:9091 -n $TR_LOGIN:$TR_PASSWORD -t $TR_TORRENT_ID --move $SERIALPATH
+		
 		# Проверяем корректно ли переместился файл
 		if [ -f "$SERIALPATH$TR_TORRENT_NAME" ]
 		then
@@ -77,9 +79,11 @@ then
 			fi
 
 			# Перемещаем файл
-			mv -f $FILE $FILMPATH
+			# mv -f $FILE $FILMPATH
+			transmission-remote 192.168.88.21:9091 -n $TR_LOGIN:$TR_PASSWORD -t $TR_TORRENT_ID --move $FILMPATH
+			
 			# Проверяем корректно ли переместился файл
-			if [ -f "$SERIALPATH$TR_TORRENT_NAME" ]
+			if [ -f "$FILMPATH$TR_TORRENT_NAME" ]
 			then
 				echo "$PREF Файл $TR_TORRENT_NAME успешно сохранен в папку $FILMPATH"
 			else
