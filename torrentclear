@@ -1,0 +1,113 @@
+#!/bin/bash
+
+# Torrent Clear Script v0.0.4
+# Скрипт для Cron
+# Очистка торрентов в Transmission, которые достигли коэффициента = 2
+# И которые достигли лимита активности раздачи: По умолчанию 7 дней
+# Расписание запуска по умолчанию: Каждый час
+#
+# Протестировано на:
+# Debian GNU/Linux 9.4 (stretch)
+# transmission-daemon 2.92 (14714)
+#
+# Настройка Cron:
+#
+#
+
+# Определяем переменные
+PREF="transremover:"
+TR_LOGIN="user"
+TR_PASSWORD="12345"
+TR_CONNECT=$(transmission-remote 192.168.88.21:9091 -n $TR_LOGIN:$TR_PASSWORD)
+NOWDATE=$(date +%s) # Текущая дата в секундах | Важно, чтобы была настроена NTP синхронизация на ОС
+LIMITTIME="604800" # Через какое кол-во дней (7 дней = 604800 секунд) торрент должен быть удален, даже если он не достиг коэффициента раздачи = 2
+
+# ФУНКЦИИ
+#
+# Функция отправки оповещения на почту
+emailsend(){
+	# Задаем парметры для отправки E-Mail письма
+	local TMP=$(mktemp)
+	local SMTP="smtp.yandex.ru:25"
+	local EMAIL_ACCOUNT_PASSWORD="smtp_password"
+	local FROM_EMAIL_ADDRESS="no-reply@mydomen.ru"
+	local TO_EMAIL_ADDRESS="myname@mydomen.ru"
+
+	local EMAIL_THEME="Тема письма"
+	local EMAIL_SUBJECT="Текст письма"
+
+	# Пишем во временный файл
+
+}
+
+# ВЫПОЛНЕНИЕ
+
+# Проверяем запущен ли transmission-daemon
+# Если нет, то сразу завершаем выполнение скрипта
+TR_STATUS=$(systemctl status transmission-daemon | grep 'Active' | grep -Eo '\([a-z]+\)' | sed -r 's/(\(|\))//g')
+if [[ $TR_STATUS != "running" ]]; then
+	echo "$PREF Служба transmission-daemon не запущена! Дальнейшая обработка не производится. Выход!"
+	exit 0;
+else
+	echo "$PREF Служба transmission-daemon активна. Старт запуска обработки торрентов..."
+fi
+# Если сервис запущен, работаем дальше
+
+# Выбираем все торренты со 100% выполнением и коэффициентом раздачи = 2
+# Получаем все ID торрентов. 
+# Обрабатываем их в цикле
+for TORRENTID in $($TR_CONNECT -l | grep -Eo '^ *([0-9]+)' | sed -r 's/[^0-9]//g')
+do
+	# Получаем имя обрабатываемого торрента для логов
+	TR_NAME=$($TR_CONNECT -t$TORRENTID -i | grep 'Name:' | grep -Eo '\:\s(.*+)' | sed -r 's/^\:\s//')
+	# Дата окончания загрузки торрента в формате: Wed Apr 18 13:00:35 2018
+	TR_DATEDONE=$($TR_CONNECT -t$TORRENTID -i | grep 'Date finished:' | grep -Eo '\:\s{4}.*+' | sed -r 's/^\:\s{4}//')
+	TR_DATEDONE=$(date -d "$TR_DATEDONE" +%s)
+	# Получаем процент загрузки торрента
+	PERCENT=$($TR_CONNECT -t$TORRENTID -i | grep 'Percent Done:' | sed -r 's/(\s|[a-zA-Z]|\:)//g')
+	# Получаем коэффициент раздачи торрента
+	RATIO=$($TR_CONNECT -t$TORRENTID -i | grep 'Ratio:' | sed -r 's/(\s|[a-zA-Z]|\:)//g')
+
+	# Производим сравнение
+	if [[ $PERCENT = "100%" && $RATIO = "2.0" ]]; then
+		# Нашли такой торрент
+
+		# Останавливаем и удаляем торрент из Transmission
+		$TR_CONNECT -t$TORRENTID -S
+		REMOVE=$($TR_CONNECT -t$TORRENTID -r | grep -Eo '\"([a-z]+)\"' | sed -r 's/\"//g')
+
+		# Проверка удаления
+		if [[ $REMOVE != "success" ]]; then
+			# Удаление не удалось
+			echo "$PREF Ошибка в удалении торрента $TR_NAME из Transmission по достижении коэффициента раздачи"
+		else
+			# Удаление успешно
+			echo "$PREF Торрент $TR_NAME успешно удален по достижении коэффициента раздачи"
+		fi
+	else
+		# Торрент не соответствует 100% готовности и коэффициенту 2.0
+		# Проверяем разницу текщей даты и даты окончания загрузки. Сравниваем с лимитом активности торрента
+
+		# Считаем разницу между текущей датой и датой окончания загрузки торрента
+		DATEDIFF=$(($NOWDATE - $TR_DATEDONE))
+
+		# Если разница дат больше или равна лимиту активности торрента, удаляем его
+		if [[ $DATEDIFF >= $LIMITTIME ]]; then
+
+			# Останавливаем и удаляем торрент из Transmission
+			$TR_CONNECT -t$TORRENTID -S
+			REMOVE=$($TR_CONNECT -t$TORRENTID -r | grep -Eo '\"([a-z]+)\"' | sed -r 's/\"//g')
+
+			# Проверка удаления
+			if [[ $REMOVE != "success" ]]; then
+				# Удаление не удалось
+				echo "$PREF Ошибка в удалении торрента $TR_NAME из Transmission по достижении лимита активности раздачи"
+			else
+				# Удаление успешно
+				echo "$PREF Торрент $TR_NAME успешно удален по достижении лимита активности раздачи в \"$LIMITTIME\" сек."
+			fi
+		fi
+	fi
+done
+echo "$PREF Обработка торрентов закончена."
+exit 0;
