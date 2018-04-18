@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Torrent Clear Script v0.0.5
+# Torrent Clear Script v0.0.6
 # Скрипт для Cron
 # Очистка торрентов в Transmission, которые достигли коэффициента = 2
 # И которые достигли лимита активности раздачи: По умолчанию 7 дней
@@ -20,12 +20,13 @@
 PREF="transremover:"
 TR_LOGIN="user"
 TR_PASSWORD="12345"
-TR_CONNECT=$(transmission-remote 192.168.88.21:9091 -n $TR_LOGIN:$TR_PASSWORD)
-NOWDATE=$(date +%s) # Текущая дата в секундах | Важно, чтобы была настроена NTP синхронизация на ОС
+TR_CONNECT="transmission-remote 192.168.88.21:9091 -n $TR_LOGIN:$TR_PASSWORD"
+NOWDATE=$(date +%s) # Текущая дата в секундах | Желательно, чтобы была настроена NTP синхронизация на ОС
 LIMITTIME="604800" # Через какое кол-во дней (7 дней = 604800 секунд) торрент должен быть удален, даже если он не достиг коэффициента раздачи = 2
+COUNTER=0
 
 # ФУНКЦИИ
-#
+
 # Функция отправки оповещения на почту
 emailsend(){
 	# Задаем парметры для отправки E-Mail письма
@@ -94,7 +95,7 @@ do
 		DATEDIFF=$(($NOWDATE - $TR_DATEDONE))
 
 		# Если разница дат больше или равна лимиту активности торрента, удаляем его
-		if [[ $DATEDIFF >= $LIMITTIME ]]; then
+		if [ $DATEDIFF -ge $LIMITTIME ]; then
 
 			# Останавливаем и удаляем торрент из Transmission
 			$TR_CONNECT -t$TORRENTID -S
@@ -110,6 +111,7 @@ do
 			fi
 		fi
 	fi
+	COUNTER=$[COUNTER + 1]
 done
-echo "$PREF Обработка торрентов закончена."
+echo "$PREF Обработка торрентов закончена. Всего торрентов обработано: $COUNTER"
 exit 0;
