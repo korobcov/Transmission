@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Torrent Clear Script v0.0.6
+# Torrent Clear Script v0.0.7
 # Скрипт для Cron
 # Очистка торрентов в Transmission, которые достигли коэффициента = 2
 # И которые достигли лимита активности раздачи: По умолчанию 7 дней
@@ -14,6 +14,9 @@
 # cd /etc/cron.hourly/
 # положить в эту папку файл torrentclear и дать права на выполнение
 # sudo chmod +x torrentclear
+#
+# Мониторинг скрипта:
+# sudo tail -f /var/log/syslog | grep transremover
 #
 
 # Определяем переменные
