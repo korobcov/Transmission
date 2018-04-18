@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Torrent Clear Script v0.0.10
+# Torrent Clear Script v0.0.11
 # Скрипт для Cron
 # Очистка торрентов в Transmission, которые достигли коэффициента = 2
 # И которые достигли лимита активности раздачи: По умолчанию 7 дней
@@ -32,6 +32,11 @@ COUNTER=0
 
 # Функция отправки оповещения на почту
 emailsend(){
+	#
+	# Должен быть установлен пакет утилит для работы с почтой
+	# sudo apt install mailutils
+	#
+
 	# Задаем парметры для отправки E-Mail письма
 	local TMP=$(mktemp)
 	local SMTP="smtp.yandex.ru:25"
