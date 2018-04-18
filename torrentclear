@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Torrent Clear Script v0.0.7
+# Torrent Clear Script v0.0.8
 # Скрипт для Cron
 # Очистка торрентов в Transmission, которые достигли коэффициента = 2
 # И которые достигли лимита активности раздачи: По умолчанию 7 дней
@@ -73,6 +73,9 @@ do
 	PERCENT=$($TR_CONNECT -t$TORRENTID -i | grep 'Percent Done:' | sed -r 's/(\s|[a-zA-Z]|\:)//g')
 	# Получаем коэффициент раздачи торрента
 	RATIO=$($TR_CONNECT -t$TORRENTID -i | grep 'Ratio:' | sed -r 's/(\s|[a-zA-Z]|\:)//g')
+
+	# Какой торрент обрабатываем
+	echo "$PREF Проверяем торрент -- $TR_NAME"
 
 	# Производим сравнение
 	if [[ $PERCENT = "100%" && $RATIO = "2.0" ]]; then
