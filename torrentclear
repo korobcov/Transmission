@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Torrent Clear Script v0.0.8
+# Torrent Clear Script v0.0.9
 # Скрипт для Cron
 # Очистка торрентов в Transmission, которые достигли коэффициента = 2
 # И которые достигли лимита активности раздачи: По умолчанию 7 дней
@@ -52,10 +52,10 @@ emailsend(){
 # Если нет, то сразу завершаем выполнение скрипта
 TR_STATUS=$(systemctl status transmission-daemon | grep 'Active' | grep -Eo '\([a-z]+\)' | sed -r 's/(\(|\))//g')
 if [[ $TR_STATUS != "running" ]]; then
-	echo "$PREF Служба transmission-daemon не запущена! Дальнейшая обработка не производится. Выход!"
+	logger "$PREF Служба transmission-daemon не запущена! Дальнейшая обработка не производится. Выход!"
 	exit 0;
 else
-	echo "$PREF Служба transmission-daemon активна. Старт запуска обработки торрентов..."
+	logger "$PREF Служба transmission-daemon активна. Старт запуска обработки торрентов..."
 fi
 # Если сервис запущен, работаем дальше
 
@@ -75,7 +75,7 @@ do
 	RATIO=$($TR_CONNECT -t$TORRENTID -i | grep 'Ratio:' | sed -r 's/(\s|[a-zA-Z]|\:)//g')
 
 	# Какой торрент обрабатываем
-	echo "$PREF Проверяем торрент -- $TR_NAME"
+	logger "$PREF Проверяем торрент -- $TR_NAME"
 
 	# Производим сравнение
 	if [[ $PERCENT = "100%" && $RATIO = "2.0" ]]; then
@@ -88,10 +88,10 @@ do
 		# Проверка удаления
 		if [[ $REMOVE != "success" ]]; then
 			# Удаление не удалось
-			echo "$PREF Ошибка в удалении торрента $TR_NAME из Transmission по достижении коэффициента раздачи"
+			logger "$PREF Ошибка в удалении торрента $TR_NAME из Transmission по достижении коэффициента раздачи"
 		else
 			# Удаление успешно
-			echo "$PREF Торрент $TR_NAME успешно удален по достижении коэффициента раздачи"
+			logger "$PREF Торрент $TR_NAME успешно удален по достижении коэффициента раздачи"
 		fi
 	else
 		# Торрент не соответствует 100% готовности и коэффициенту 2.0
@@ -110,10 +110,10 @@ do
 			# Проверка удаления
 			if [[ $REMOVE != "success" ]]; then
 				# Удаление не удалось
-				echo "$PREF Ошибка в удалении торрента $TR_NAME из Transmission по достижении лимита активности раздачи"
+				logger "$PREF Ошибка в удалении торрента $TR_NAME из Transmission по достижении лимита активности раздачи"
 			else
 				# Удаление успешно
-				echo "$PREF Торрент $TR_NAME успешно удален по достижении лимита активности раздачи в \"$LIMITTIME\" сек."
+				logger "$PREF Торрент $TR_NAME успешно удален по достижении лимита активности раздачи в \"$LIMITTIME\" сек."
 			fi
 		fi
 	fi
