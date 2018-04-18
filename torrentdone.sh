@@ -1,6 +1,5 @@
 #!/bin/bash
-
-# Torrent Done Script v0.0.6
+# Torrent Done Script v0.0.7
 # Скрипт для Transmission Daemon
 # Перемещение завершенных торрентов по папкам
 #
@@ -9,7 +8,7 @@
 # transmission-daemon 2.92 (14714)
 #
 # Подключение:
-# редактированием конфигурационного файла settings.json
+# Редактированием конфигурационного файла settings.json
 # "script-torrent-done-enabled": true,
 # "script-torrent-done-filename": "/mypath/torrentdone.sh",
 #
@@ -36,7 +35,6 @@ regex_3d="(\s(3D|3d)\s)"
 
 
 # ВЫПОЛНЕНИЕ
-
 # Проверяем существует ли файл
 if [ -f "$TR_TORRENT_DIR$TR_TORRENT_NAME" ]
 then
@@ -56,7 +54,7 @@ then
 		SERIALNAME=$(echo $TR_TORRENT_NAME | grep -Eo '^(.*+).S[0-9].' | sed -r 's/(\.)/_/g' | sed -r 's/(_S[0-9].)//')
 		SEASON=$(echo $TR_TORRENT_NAME | grep -Eo 'S[0-9].' | grep -Eo '[0-9].')
 		SERIALPATH="/mnt/data/media/serials/$SERIALNAME/Season_$SEASON/"
-		
+
 		# Проверяем есть ли уже такая дирректория
 		if ! [ -d $SERIALPATH ]; then
 			echo "$PREF Пути $SERIALPATH не существует. Создаем недостающие папки."
@@ -66,7 +64,7 @@ then
 		# Перемещаем файл силами самого Transmission, чтобы не останавливать раздачу
 		# mv -f $FILE $SERIALPATH # Если нет желания использовать Transmission
 		transmission-remote 192.168.88.21:9091 -n $TR_LOGIN:$TR_PASSWORD -t $TR_TORRENT_ID --move $SERIALPATH
-		
+
 		# Проверяем корректно ли переместился файл
 		if [ -f "$SERIALPATH$TR_TORRENT_NAME" ]
 		then
@@ -77,7 +75,7 @@ then
 			exit 0;
 		fi
 	else
-		# Файл не сериал.
+		# Файл не сериал
 		# Ищем соответствие фильму
 		if [[ "${TR_TORRENT_NAME}" =~ $regex_film ]]; then
 			# Это фильм
@@ -85,9 +83,10 @@ then
 			# Пример названия 3D фильма для сохранения: Дикий Запад 3D (2018).mkv
 			# Пример пути расположения файла: /mnt/data/media/films/2018/Дикий Запад (2018).mkv
 			# Пример пути расположения файла: /mnt/data/media/films/3d/2018/Дикий Запад 3D (2018).mkv
+
 			# Вытаскиваем год фильма
 			YEAR=$(echo $TR_TORRENT_NAME | grep -Eo '\([0-9]+\)' | sed -r 's/(\(|\))//g')
-			
+
 			# Проверяем в 3D фильм или нет
 			if [[ "${TR_TORRENT_NAME}" =~ $regex_3d ]]; then
 				# Фильм в 3D
@@ -98,7 +97,7 @@ then
 				# Задаем базовый путь сохранения фильма
 				FILMPATH="/mnt/data/media/films/$YEAR/"
 			fi
-			
+
 			# Проверяем есть ли уже такая дирректория
 			if ! [ -d $FILMPATH ]; then
 				# Создаем папки
@@ -109,7 +108,7 @@ then
 			# Перемещаем файл силами самого Transmission, чтобы не останавливать раздачу
 			# mv -f $FILE $FILMPATH # Если нет желания использовать Transmission
 			transmission-remote 192.168.88.21:9091 -n $TR_LOGIN:$TR_PASSWORD -t $TR_TORRENT_ID --move $FILMPATH
-			
+
 			# Проверяем корректно ли переместился файл
 			if [ -f "$FILMPATH$TR_TORRENT_NAME" ]
 			then
@@ -120,13 +119,13 @@ then
 				exit 0;
 			fi
 		else
-			# Просто какой-то файл.
-			# Он не Сериал и не Фильм. Оставляем его лежать в папке Complete
+			# Просто какой-то файл
+			# Он не Сериал и не Фильм
+			# Оставляем его лежать в папке Complete
 			echo "$PREF Неизвестный файл. Место хранения не изменяется."
 			exit 0;
 		fi
 	fi
-
 else
 	# Файла нет
 	echo "$PREF Запрашиваемый файл \"$TR_TORRENT_NAME\" не существует по пути \"$TR_TORRENT_DIR\""
