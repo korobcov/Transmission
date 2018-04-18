@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Torrent Clear Script v0.0.11
+# Torrent Clear Script v0.0.13
 # Скрипт для Cron
 # Очистка торрентов в Transmission, которые достигли коэффициента = 2
 # И которые достигли лимита активности раздачи: По умолчанию 7 дней
@@ -31,24 +31,52 @@ COUNTER=0
 # ФУНКЦИИ
 
 # Функция отправки оповещения на почту
+# Пример отправки письма:
+# emailsend "Тема письма" "Основной текст письма"
 emailsend(){
 	#
-	# Должен быть установлен пакет утилит для работы с почтой
-	# sudo apt install mailutils
+	# Должен быть установлен пакет для работы с почтой
+	# sudo apt install msmtp
 	#
+	# $1 - Тема письма
+	# $2 - Текст письма
 
-	# Задаем парметры для отправки E-Mail письма
-	local TMP=$(mktemp)
-	local SMTP="smtp.yandex.ru:25"
-	local EMAIL_ACCOUNT_PASSWORD="smtp_password"
-	local FROM_EMAIL_ADDRESS="no-reply@mydomen.ru"
-	local TO_EMAIL_ADDRESS="myname@mydomen.ru"
+	# Создаем временный файл с текстом сообщения
+	TMP=$(mktemp)
+	echo "<div style=\"font-weight:bold;font-size:14px;color:#535353;\">" >> $TMP
+	echo "$2" >> $TMP
+	echo "</div>" >> $TMP
 
-	local EMAIL_THEME="Тема письма"
-	local EMAIL_SUBJECT="Текст письма"
+	# Задаем переменные для отправки email
+	MAIL_SERVER="smtp.yandex.ru"
+	MAIL_PORT="465"
+	MAIL_DATE=$(date +"%d %b %Y %T")
+	MAIL_FROM="noreply@my-domen.ru"
+	MAIL_TO="my@my-domen.ru"
+	MAIL_PASSWORD="my_password_for_mail_from"
+	MAIL_SUBJECT="$1"
+	MAIL_TEXT=$(cat $TMP)
+	MAIL_MESSAGE="Date: ${MAIL_DATE}
+	\nFrom: ${MAIL_FROM}
+	\nTo: ${MAIL_TO}
+	\nSubject: ${MAIL_SUBJECT}
+	\nContent-Type: text/html; charset=UTF-8
+	\n\n${MAIL_TEXT}"
 
-	# Пишем во временный файл
+	# Отправляем email сообщение
+	echo -e ${MAIL_MESSAGE} | /usr/bin/msmtp \
+	--host=${MAIL_SERVER} \
+	--port=${MAIL_PORT} \
+	--tls=on \
+	--tls-certcheck=off \
+	--tls-starttls=off \
+	--auth=login \
+	--user=${MAIL_FROM} \
+	--passwordeval="echo ${MAIL_PASSWORD}" \
+	-f ${MAIL_FROM} ${MAIL_TO}
 
+	# Удаляем временный файл
+	rm $TMP
 }
 
 # ВЫПОЛНЕНИЕ
