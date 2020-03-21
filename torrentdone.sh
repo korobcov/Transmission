@@ -1,133 +1,184 @@
 #!/bin/bash
-# Torrent Done Script v0.0.8
-# Скрипт для Transmission Daemon
-# Перемещение завершенных торрентов по папкам
+# Torrent Done Script v0.9.15
 #
-# Протестировано на:
+# Tested on:
 # Debian GNU/Linux 9.4 (stretch)
 # transmission-daemon 2.92 (14714)
 #
-# Подключение:
-# Редактированием конфигурационного файла settings.json
-# "script-torrent-done-enabled": true,
-# "script-torrent-done-filename": "/mypath/torrentdone.sh",
-#
-# Базовые переменные. Они передаются скрипту самим Transmission
-# =================================================================================
-# $TR_APP_VERSION: версия Transmission
-# $TR_TORRENT_ID: идентификатор торрента (число, показывается в remote-GUI)
-# $TR_TORRENT_NAME: имя торента в том виде, как оно отображается в интерфейсе
-# $TR_TORRENT_DIR: папка торрента
-# $TR_TORRENT_HASH: хэш торрента
-# $TR_TIME_LOCALTIME: дата и время запуска скрипта
-#
+# Create logfile dir:
+# mkdir /var/log/transmission && chown -R debian-transmission:debian-transmission /var/log/transmission
 
-# Определяем дополнительные переменные
-PREF="transsaver:"
-TR_LOGIN="user"
-TR_PASSWORD="12345"
+# INIT
+LOGFILE="/var/log/transmission/torrentdone.log"
+TRANSIP="127.0.0.1"
+TRANSPORT="9091"
+TR_LOGIN="narakot"
+TR_PASSWORD="247050689Hh"
 TR_TORRENT_DIR="$TR_TORRENT_DIR/"
-regex_ser="(LostFilm|TV|serial|Serial|S[0-9].E[0-9].|novafilm)"
+regex_ser="(LostFilm|TV|serial|Serial|novafilm|S[0-9]{2}|E[0-9]{2})"
 regex_film="(\([0-9]+\)\.(mkv|avi|mp4))"
 regex_3d="(\s(3D|3d)\s)"
 
-# ФУНКЦИИ
-
-
-# ВЫПОЛНЕНИЕ
-# Проверяем существует ли файл
-if [ -f "$TR_TORRENT_DIR$TR_TORRENT_NAME" ]
-then
-	# Файл на месте
-	echo "$PREF Начало обработки торрента - $TR_TORRENT_NAME"
-
-	# Формируем путь к исходному файлу
-	FILE="$TR_TORRENT_DIR$TR_TORRENT_NAME"
-
-	# Ищем соответствие сериалу
-	if [[ "${TR_TORRENT_NAME}" =~ $regex_ser ]]; then
-		# Это сериал
-		# Вытаскиваем имя сериала и его сезон
-		# Формируем путь сохранения из этих данных
-		# Пример папки сериала: Marvels_Agents_of_S_H_I_E_L_D
-		# Пример пути расположения файла: /mnt/data/media/serials/Marvels_Agents_of_S_H_I_E_L_D/Season_05/Marvels.Agents.of.S.H.I.E.L.D.S05E17.rus.LostFilm.TV.avi
-		SERIALNAME=$(echo $TR_TORRENT_NAME | grep -Eo '^(.*+).S[0-9].' | sed -r 's/(\.)/_/g' | sed -r 's/(_S[0-9].)//')
-		SEASON=$(echo $TR_TORRENT_NAME | grep -Eo 'S[0-9].' | grep -Eo '[0-9].')
-		SERIALPATH="/mnt/data/media/serials/$SERIALNAME/Season_$SEASON/"
-
-		# Проверяем есть ли уже такая дирректория
-		if ! [ -d $SERIALPATH ]; then
-			echo "$PREF Пути $SERIALPATH не существует. Создаем недостающие папки."
-			mkdir -m 777 -p $SERIALPATH
-		fi
-
-		# Перемещаем файл силами самого Transmission, чтобы не останавливать раздачу
-		# mv -f $FILE $SERIALPATH # Если нет желания использовать Transmission
-		transmission-remote 192.168.88.21:9091 -n $TR_LOGIN:$TR_PASSWORD -t $TR_TORRENT_ID --move $SERIALPATH
-
-		# Проверяем корректно ли переместился файл
-		if [ -f "$SERIALPATH$TR_TORRENT_NAME" ]
-		then
-			echo "$PREF Файл $TR_TORRENT_NAME успешно сохранен в папку $SERIALPATH"
-			exit 0;
-		else
-			echo "$PREF Файл $TR_TORRENT_NAME НЕ сохранен в папку $SERIALPATH"
-			exit 0;
-		fi
+# FUNCTIONS
+function logging
+{
+	if [ -e $LOGFILE ]; then
+		echo "`date '+%d.%m.%Y %H:%M:%S'`       $1" >> $LOGFILE
 	else
-		# Файл не сериал
-		# Ищем соответствие фильму
-		if [[ "${TR_TORRENT_NAME}" =~ $regex_film ]]; then
-			# Это фильм
-			# Пример названия фильма для сохранения: Дикий Запад (2018).mkv
-			# Пример названия 3D фильма для сохранения: Дикий Запад 3D (2018).mkv
-			# Пример пути расположения файла: /mnt/data/media/films/2018/Дикий Запад (2018).mkv
-			# Пример пути расположения файла: /mnt/data/media/films/3d/2018/Дикий Запад 3D (2018).mkv
+		touch $LOGFILE
+		echo "`date '+%d.%m.%Y %H:%M:%S'`       $1" >> $LOGFILE
+	fi
+}
+function serialprocess
+{
+	# $1 - $TR_TORRENT_DIR + $TR_TORRENT_NAME
+	# $2 - File or Directory (1 - File | 2 - Directory)
 
-			# Вытаскиваем год фильма
-			YEAR=$(echo $TR_TORRENT_NAME | grep -Eo '\([0-9]+\)' | sed -r 's/(\(|\))//g')
+	logging "This File is Serial..."
+	# Get Serial name
+	local TR_TORRENT_NAME=`/usr/bin/basename "$1"` # example result: name.mkv
+	logging "TR_TORRENT_NAME: $TR_TORRENT_NAME"
+	# Get and Change Serial name
+	local SERIALNAME=`echo $TR_TORRENT_NAME | /bin/grep -Eo '^(.*+).S[0-9].' | /bin/sed -r 's/(\.)/_/g' | /bin/sed -r 's/(_S[0-9].)//'`
+	logging "SERIALNAME: $SERIALNAME"
+	# Get Serial season
+	local SEASON=`echo $TR_TORRENT_NAME | /bin/grep -Eo 'S[0-9].' | /bin/grep -Eo '[0-9].'`
+	logging "SEASON: $SEASON"
+	# Set Serial path
+	local SERIALPATH="/mnt/data/media/serials/$SERIALNAME/Season_$SEASON/"
+	logging "SERIALPATH: $SERIALPATH"
+	# Check Serial path
+	if ! [ -d $SERIALPATH ]; then
+		logging "Path $SERIALPATH does not exist. Create the missing folders..."
+		mkdir -m 777 -p $SERIALPATH
+	fi
+	# If File
+	if [ $2 == 1 ]; then
+		# Move Serial file
+		logging "Move file $1 to folder $SERIALPATH"
+		transmission-remote $TRANSIP:$TRANSPORT -n $TR_LOGIN:$TR_PASSWORD -t $TR_TORRENT_ID --move $SERIALPATH
+	fi
+	# If Dir
+	if [ $2 == 2 ]; then
+		# Copy Serial file
+		logging "Copy file $1 to folder $SERIALPATH"
+		cp $1 $SERIALPATH
+	fi
+	# Check result
+	if [ -f "$SERIALPATH$TR_TORRENT_NAME" ]; then
+		logging "File $TR_TORRENT_NAME successfully saved to folder $SERIALPATH"
+	else
+		logging "Error: File $TR_TORRENT_NAME NOT saved to folder $SERIALPATH$"
+	fi
+}
+function filmprocess
+{
+	# $1 - $TR_TORRENT_DIR$TR_TORRENT_NAME
+	# $2 - File or Directory (1 - File | 2 - Directory)
+	# $3 - 3D or 2D (2 - 3D | 1 - 2D)
 
-			# Проверяем в 3D фильм или нет
-			if [[ "${TR_TORRENT_NAME}" =~ $regex_3d ]]; then
-				# Фильм в 3D
-				# Меняем путь для сохранения
-				FILMPATH="/mnt/data/media/films/3d/$YEAR/"
-			else
-				# Обычный фильм
-				# Задаем базовый путь сохранения фильма
-				FILMPATH="/mnt/data/media/films/$YEAR/"
-			fi
+	logging "This File is Film..."
+	# Get Film name
+	local TR_TORRENT_NAME=`/usr/bin/basename "$1"` # example result: name.mkv
+	logging "TR_TORRENT_NAME: $TR_TORRENT_NAME"
+	# Get YEAR
+	local YEAR=`echo $TR_TORRENT_NAME | /bin/grep -Eo '\([0-9]+\)' | /bin/sed -r 's/(\(|\))//g'`
+	logging "YEAR: $YEAR"
+	# Set Film path
+	if [ $3 == 2 ]; then
+		# 3D = 2
+		local FILMPATH="/mnt/data/media/films/3D/$YEAR/"
+	fi
+	if [ $3 == 1 ]; then
+		# 2D = 1
+		local FILMPATH="/mnt/data/media/films/2D/$YEAR/"
+	fi
+	logging "FILMPATH: $FILMPATH"
+	# Check Film path
+	if ! [ -d $FILMPATH ]; then
+		logging "Path $FILMPATH does not exist. Create the missing folders."
+		mkdir -m 777 -p $FILMPATH
+	fi
+	# If File
+	if [ $2 == 1 ]; then
+		# Move Film file
+		logging "Move file $1 to folder $FILMPATH"
+		transmission-remote $TRANSIP:$TRANSPORT -n $TR_LOGIN:$TR_PASSWORD -t $TR_TORRENT_ID --move $FILMPATH
+	fi
+	# If Dir
+	if [ $2 == 2 ]; then
+		# Copy Film file
+		logging "Copy file $1 to folder $FILMPATH"
+		cp $1 $FILMPATH
+	fi
+	# Check result
+	if [ -f "$FILMPATH$TR_TORRENT_NAME" ]; then
+		logging "File $TR_TORRENT_NAME successfully saved to folder $FILMPATH"
+	else
+		logging "Error: File $TR_TORRENT_NAME NOT saved to folder $FILMPATH$"
+	fi
+}
 
-			# Проверяем есть ли уже такая дирректория
-			if ! [ -d $FILMPATH ]; then
-				# Создаем папки
-				echo "$PREF Пути $FILMPATH не существует. Создаем нужные папки."
-				mkdir -m 777 -p $FILMPATH
-			fi
+# ACTION
+# Start recording torrent information in a log file
+logging "#========================# TORRENT ID: $TR_TORRENT_ID FINISH #========================#"
+logging "VER:		Transmission - v$TR_APP_VERSION"
+logging "DIR:		$TR_TORRENT_DIR"
+logging "NAME:		$TR_TORRENT_NAME"
+logging "DTIME:	$TR_TIME_LOCALTIME"
+logging "HASH:		$TR_TORRENT_HASH"
 
-			# Перемещаем файл силами самого Transmission, чтобы не останавливать раздачу
-			# mv -f $FILE $FILMPATH # Если нет желания использовать Transmission
-			transmission-remote 192.168.88.21:9091 -n $TR_LOGIN:$TR_PASSWORD -t $TR_TORRENT_ID --move $FILMPATH
-
-			# Проверяем корректно ли переместился файл
-			if [ -f "$FILMPATH$TR_TORRENT_NAME" ]
-			then
-				echo "$PREF Файл $TR_TORRENT_NAME успешно сохранен в папку $FILMPATH"
-				exit 0;
-			else
-				echo "$PREF Файл $TR_TORRENT_NAME НЕ сохранен в папку $FILMPATH"
-				exit 0;
-			fi
+# Check File or Directory
+if [ -f "$TR_TORRENT_DIR$TR_TORRENT_NAME" ]; then
+	# Is File
+	logging "Start Torrent process - $TR_TORRENT_NAME"
+	logging "Is File. Next..."
+	FILE="$TR_TORRENT_DIR$TR_TORRENT_NAME"
+	# Is serial?
+	if [[ "${TR_TORRENT_NAME}" =~ $regex_ser ]]; then
+		serialprocess $FILE 1
+		exit 0;
+	# Is Film?
+	elif [[ "${TR_TORRENT_NAME}" =~ $regex_film ]]; then
+		# Is Film 3D?
+		if [[ "${TR_TORRENT_NAME}" =~ $regex_3d ]]; then
+			# Is Film 3D
+			filmprocess $FILE 1 2
+			exit 0;
 		else
-			# Просто какой-то файл
-			# Он не Сериал и не Фильм
-			# Оставляем его лежать в папке Complete
-			echo "$PREF Неизвестный файл. Место хранения не изменяется."
+			# Is film 2D
+			filmprocess $FILE 1 1
 			exit 0;
 		fi
+	# No Serial and no Film. Other file
+	else
+		logging "File(s) \"$TR_TORRENT_NAME\" not defined as TV show or movie"
+		exit 0;
 	fi
 else
-	# Файла нет
-	echo "$PREF Запрашиваемый файл \"$TR_TORRENT_NAME\" не существует по пути \"$TR_TORRENT_DIR\""
-	exit 0;
+	# Is Directory
+	logging "Start Torrent process - $TR_TORRENT_NAME"
+	logging "Is Directory. Next..."
+	for FILE in $TR_TORRENT_DIR$TR_TORRENT_NAME/*; do
+		if  [[ $FILE != *.part ]]; then
+			# FILE=FILE
+			TR_TORRENT_NAME=`/usr/bin/basename "$FILE"`
+			logging "###################### $TR_TORRENT_NAME #######################"
+			# Is serial?
+			if [[ "${TR_TORRENT_NAME}" =~ $regex_ser ]]; then
+				serialprocess $FILE 2
+			# Is Film?
+			elif [[ "${TR_TORRENT_NAME}" =~ $regex_film ]]; then
+				# Is Film 3D?
+				if [[ "${TR_TORRENT_NAME}" =~ $regex_3d ]]; then
+					filmprocess $FILE 2 2
+				else
+					filmprocess $FILE 2 1
+				fi
+			else
+				logging "File(s) \"$TR_TORRENT_NAME\" not defined as TV show or movie"
+			fi
+		fi
+	done
 fi
+exit 0;

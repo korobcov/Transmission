@@ -1,156 +1,141 @@
 #!/bin/bash
+# Torrent Clear Script v0.9.15
 
-# Torrent Clear Script v0.0.13
-# Скрипт для Cron
-# Очистка торрентов в Transmission, которые достигли коэффициента = 2
-# И которые достигли лимита активности раздачи: По умолчанию 7 дней
-# Расписание запуска по умолчанию: Каждый час
+# Script for Cron
+# Clear torrents in Transmission-daemon, ratio >= 2
+# And who have reached the limit of distribution activity: By default 7 days
+# Default startup schedule: Every hour
 #
-# Протестировано на:
+# Tested on:
 # Debian GNU/Linux 9.4 (stretch)
 # transmission-daemon 2.92 (14714)
 #
-# Настройка Cron:
+# Cron setup:
 # cd /etc/cron.hourly/
-# положить в эту папку файл torrentclear и дать права на выполнение
-# sudo chmod +x torrentclear
+# put a torrentclear file in this folder and give execution rights
+# chmod +x torrentclear
 #
-# Мониторинг скрипта:
-# sudo tail -f /var/log/syslog | grep transremover
+# Create logfile dir:
+# mkdir /var/log/transmission
 #
 
-# Определяем переменные
-PREF="transremover:"
-TR_LOGIN="user"
-TR_PASSWORD="12345"
-TR_CONNECT="transmission-remote 192.168.88.21:9091 -n $TR_LOGIN:$TR_PASSWORD"
-NOWDATE=$(date +%s) # Текущая дата в секундах | Желательно, чтобы была настроена NTP синхронизация на ОС
-LIMITTIME="604800" # Через какое кол-во дней (7 дней = 604800 секунд) торрент должен быть удален, даже если он не достиг коэффициента раздачи = 2
-COUNTER=0
+# INIT
+LOGFILE="/var/log/transmission/torrentclear.log"
+TRANSIP="127.0.0.1"
+TRANSPORT="9091"
+TR_LOGIN="narakot"
+TR_PASSWORD="247050689Hh"
+TR_CONNECT="transmission-remote $TRANSIP:$TRANSPORT -n $TR_LOGIN:$TR_PASSWORD"
+NOWDATE=$(date +%s) # Current date in seconds | It is advisable that NTP synchronization be configured on the OS
+LIMITTIME="604800" # After how many days (7 days = 604800 seconds) should the torrent be deleted, even if it has not reached the distribution coefficient = 2
 
-# ФУНКЦИИ
+# FUNCTIONS
+function logging
+{
+	# $1 - Text
+	if [ -e $LOGFILE ]; then
+		echo "`date '+%d.%m.%Y %H:%M:%S'`       $1" >> $LOGFILE
+	else
+		touch $LOGFILE
+		echo "`date '+%d.%m.%Y %H:%M:%S'`       $1" >> $LOGFILE
+	fi
+}
+function torrentinfo
+{
+	# $1 - TORRENTID
+	logging "############################ Torrent ID $1 ######################################"
+	local TR_NAME=$($TR_CONNECT -t$1 -i | grep 'Name:' | grep -Eo '\:\s(.*+)' | sed -r 's/^\:\s//')
+	logging "TR_NAME:	$TR_NAME"
+	local TR_DATEDONE=$($TR_CONNECT -t$1 -i | grep 'Date finished:' | grep -Eo '\:\s{4}.*+' | sed -r 's/^\:\s{4}//')
+	local TR_DATEDONE=$(date -d "$TR_DATEDONE" +%s)
+	logging "TR_DATEDONE:	$TR_DATEDONE"
+	local PERCENT=$($TR_CONNECT -t$1 -i | grep 'Percent Done:' | sed -r 's/(\s|[a-zA-Z]|\:)//g' | sed -r 's/\%//g')
+	logging "PERCENT:	$PERCENT%"
+	local RATIO=$($TR_CONNECT -t$1 -i | grep 'Ratio:' | sed -r 's/(\s|[a-zA-Z]|\:)//g')
+	logging "RATIO:		$RATIO"
+	local STATE=$($TR_CONNECT -t$1 -i | grep 'State:' | sed -r 's/\s(.*)\:\s//g')
+	logging "STATE:		$STATE"
+	local DATEDIFF=$(($NOWDATE - $TR_DATEDONE))
+	logging "DATEDIFF:	$DATEDIFF"
+}
+function torrentremove
+{
+	# $1 - TORRENTID
+	# $2 - (1 - RATIO | 2 - DATETIME)
+	# Stop and remove torrent from Transmission
+	local TR_NAME=$($TR_CONNECT -t$1 -i | grep 'Name:' | grep -Eo '\:\s(.*+)' | sed -r 's/^\:\s//')
+	$TR_CONNECT -t$1 -S
+	local REMOVE=$($TR_CONNECT -t$1 -r | grep -Eo '\"([a-z]+)\"' | sed -r 's/\"//g')
 
-# Функция отправки оповещения на почту
-# Пример отправки письма:
-# emailsend "Тема письма" "Основной текст письма"
-emailsend(){
-	#
-	# Должен быть установлен пакет для работы с почтой
-	# sudo apt install msmtp
-	#
-	# $1 - Тема письма
-	# $2 - Текст письма
-
-	# Создаем временный файл с текстом сообщения
-	TMP=$(mktemp)
-	echo "<div style=\"font-weight:bold;font-size:14px;color:#535353;\">" >> $TMP
-	echo "$2" >> $TMP
-	echo "</div>" >> $TMP
-
-	# Задаем переменные для отправки email
-	MAIL_SERVER="smtp.yandex.ru"
-	MAIL_PORT="465"
-	MAIL_DATE=$(date +"%d %b %Y %T")
-	MAIL_FROM="noreply@my-domen.ru"
-	MAIL_TO="my@my-domen.ru"
-	MAIL_PASSWORD="my_password_for_mail_from"
-	MAIL_SUBJECT="$1"
-	MAIL_TEXT=$(cat $TMP)
-	MAIL_MESSAGE="Date: ${MAIL_DATE}
-	\nFrom: ${MAIL_FROM}
-	\nTo: ${MAIL_TO}
-	\nSubject: ${MAIL_SUBJECT}
-	\nContent-Type: text/html; charset=UTF-8
-	\n\n${MAIL_TEXT}"
-
-	# Отправляем email сообщение
-	echo -e ${MAIL_MESSAGE} | /usr/bin/msmtp \
-	--host=${MAIL_SERVER} \
-	--port=${MAIL_PORT} \
-	--tls=on \
-	--tls-certcheck=off \
-	--tls-starttls=off \
-	--auth=login \
-	--user=${MAIL_FROM} \
-	--passwordeval="echo ${MAIL_PASSWORD}" \
-	-f ${MAIL_FROM} ${MAIL_TO}
-
-	# Удаляем временный файл
-	rm $TMP
+	# Delete check
+	if [[ $2 == 1 ]]; then
+		# RATIO
+		if [[ $REMOVE != "success" ]]; then
+			# Delete is failed
+			logging "ERR: Failed to stop and remove torrent $TR_NAME by ratio limit"
+		else
+			# Delete is successful
+			logging "Stopping and deleting a torrent $TR_NAME by ratio limit completed successfully"
+		fi	
+	fi
+	if [[ $2 == 2 ]]; then
+		# DATETIME
+		if [[ $REMOVE != "success" ]]; then
+			# Delete is failed
+			logging "ERR: Failed to stop and remove torrent $TR_NAME by datetime limit"
+		else
+			# Delete is successful
+			logging "Stopping and deleting a torrent $TR_NAME by datetime limit completed successfully"
+		fi
+	fi
 }
 
-# ВЫПОЛНЕНИЕ
-
-# Проверяем запущен ли transmission-daemon
-# Если нет, то сразу завершаем выполнение скрипта
+# ACTION
+# Check if transmission-daemon is running
+# If not, then immediately end the script
 TR_STATUS=$(systemctl status transmission-daemon | grep 'Active' | grep -Eo '\([a-z]+\)' | sed -r 's/(\(|\))//g')
 if [[ $TR_STATUS != "running" ]]; then
-	logger "$PREF Служба transmission-daemon не запущена! Дальнейшая обработка не производится. Выход!"
+	logging "#=====================================================================================#"
+	logging "ERR: The transmission-daemon service is not running! Further processing is not performed. Exit!"
 	exit 0;
 else
-	logger "$PREF Служба transmission-daemon активна. Старт запуска обработки торрентов..."
+	logging "#=====================================================================================#"
+	logging "The transmission-daemon service is active. Start torrent processing ..."
 fi
-# Если сервис запущен, работаем дальше
 
-# Выбираем все торренты со 100% выполнением и коэффициентом раздачи = 2
-# Получаем все ID торрентов. 
-# Обрабатываем их в цикле
+# If the service is running, we continue.
+# Select all torrents with 100% completion and ratio = 2
+# Get all torrent IDs.
+# We process them in a cycle
 for TORRENTID in $($TR_CONNECT -l | grep -Eo '^ *([0-9]+)' | sed -r 's/[^0-9]//g')
 do
-	# Получаем имя обрабатываемого торрента для логов
+	# GET TORRENT INFO
+	# We get the name of the processed torrent for logs
 	TR_NAME=$($TR_CONNECT -t$TORRENTID -i | grep 'Name:' | grep -Eo '\:\s(.*+)' | sed -r 's/^\:\s//')
-	# Дата окончания загрузки торрента в формате: Wed Apr 18 13:00:35 2018
+	# Torrent download end date in format: Wed Apr 18 13:00:35 2018
 	TR_DATEDONE=$($TR_CONNECT -t$TORRENTID -i | grep 'Date finished:' | grep -Eo '\:\s{4}.*+' | sed -r 's/^\:\s{4}//')
 	TR_DATEDONE=$(date -d "$TR_DATEDONE" +%s)
-	# Получаем процент загрузки торрента
-	PERCENT=$($TR_CONNECT -t$TORRENTID -i | grep 'Percent Done:' | sed -r 's/(\s|[a-zA-Z]|\:)//g')
-	# Получаем коэффициент раздачи торрента
+	# We get the percentage of download torrent (36.6 | 100 | etc)
+	PERCENT=$($TR_CONNECT -t$TORRENTID -i | grep 'Percent Done:' | sed -r 's/(\s|[a-zA-Z]|\:)//g' | sed -r 's/\%//g')
+	# We get the torrent distribution coefficient (0.3 | 1.0 | etc)
 	RATIO=$($TR_CONNECT -t$TORRENTID -i | grep 'Ratio:' | sed -r 's/(\s|[a-zA-Z]|\:)//g')
+	STATE=$($TR_CONNECT -t$TORRENTID -i | grep 'State:' | sed -r 's/\s(.*)\:\s//g')
+	DATEDIFF=$(($NOWDATE - $TR_DATEDONE))
 
-	# Какой торрент обрабатываем
-	logger "$PREF Проверяем торрент -- $TR_NAME"
-
-	# Производим сравнение
-	if [[ $PERCENT = "100%" && $RATIO = "2.0" ]]; then
-		# Нашли такой торрент
-
-		# Останавливаем и удаляем торрент из Transmission
-		$TR_CONNECT -t$TORRENTID -S
-		REMOVE=$($TR_CONNECT -t$TORRENTID -r | grep -Eo '\"([a-z]+)\"' | sed -r 's/\"//g')
-
-		# Проверка удаления
-		if [[ $REMOVE != "success" ]]; then
-			# Удаление не удалось
-			logger "$PREF Ошибка в удалении торрента $TR_NAME из Transmission по достижении коэффициента раздачи"
+	# Verification of conditions
+	# Torrent complete?
+	if python -c "exit(0 if $PERCENT == 100 else 1)"; then
+		# Is the ratio greater than or equal to 2?
+		if python -c "exit(0 if $RATIO >= $LIMRATIO else 1)"; then
+			torrentinfo $TORRENTID
+			torrentremove $TORRENTID 1
 		else
-			# Удаление успешно
-			logger "$PREF Торрент $TR_NAME успешно удален по достижении коэффициента раздачи"
-		fi
-	else
-		# Торрент не соответствует 100% готовности и коэффициенту 2.0
-		# Проверяем разницу текщей даты и даты окончания загрузки. Сравниваем с лимитом активности торрента
-
-		# Считаем разницу между текущей датой и датой окончания загрузки торрента
-		DATEDIFF=$(($NOWDATE - $TR_DATEDONE))
-
-		# Если разница дат больше или равна лимиту активности торрента, удаляем его
-		if [ $DATEDIFF -ge $LIMITTIME ]; then
-
-			# Останавливаем и удаляем торрент из Transmission
-			$TR_CONNECT -t$TORRENTID -S
-			REMOVE=$($TR_CONNECT -t$TORRENTID -r | grep -Eo '\"([a-z]+)\"' | sed -r 's/\"//g')
-
-			# Проверка удаления
-			if [[ $REMOVE != "success" ]]; then
-				# Удаление не удалось
-				logger "$PREF Ошибка в удалении торрента $TR_NAME из Transmission по достижении лимита активности раздачи"
-			else
-				# Удаление успешно
-				logger "$PREF Торрент $TR_NAME успешно удален по достижении лимита активности раздачи в \"$LIMITTIME\" сек."
+			# Date difference greater than or equal to LIMITTIME
+			if [ $DATEDIFF -ge $LIMITTIME ]; then
+				torrentinfo $TORRENTID
+				torrentremove $TORRENTID 2
 			fi
 		fi
 	fi
-	COUNTER=$[COUNTER + 1]
 done
-logger "$PREF Обработка торрентов закончена. Всего торрентов обработано: $COUNTER"
 exit 0;
