@@ -1,5 +1,5 @@
 #!/bin/bash
-# Torrent Clear Script v0.9.16
+# Torrent Clear Script v0.9.17
 
 # Script for Cron
 # Clear torrents in Transmission-daemon, ratio >= 2
@@ -29,7 +29,6 @@ TR_PASSWORD="123456789"
 TR_CONNECT="transmission-remote $TRANSIP:$TRANSPORT -n $TR_LOGIN:$TR_PASSWORD"
 NOWDATE=$(date +%s) # Current date in seconds | It is advisable that NTP synchronization be configured on the OS
 LIMITTIME="604800" # After how many days (7 days = 604800 seconds) should the torrent be deleted, even if it has not reached the distribution coefficient = 2
-LIMRATIO=2.0
 
 # FUNCTIONS
 function logging
@@ -94,6 +93,7 @@ function torrentremove
 
 # ACTION
 # Get Ratio Limit
+RATIOENABLE=$(cat $SETTINGFILE | grep '\"ratio-limit-enabled\":' | grep -Eo '(true|false)' | sed -e 's/true/1/' -e 's/false/0/')
 
 # Check if transmission-daemon is running
 # If not, then immediately end the script
@@ -128,17 +128,22 @@ do
 	logging "#=====================================================================================#"
 	logging "Check torrent $TR_NAME. PERCENT: $PERCENT; RATIO: $RATIO; STATE: $STATE; DATEDIFF: $DATEDIFF"
 	if python -c "exit(0 if $PERCENT == 100 else 1)"; then
-		# Is the ratio greater than or equal to 2?
-		if python -c "exit(0 if $RATIO >= $LIMRATIO else 1)"; then
-			torrentinfo $TORRENTID
-			torrentremove $TORRENTID 1
-		else
-			# Date difference greater than or equal to LIMITTIME
-			if [ $DATEDIFF -ge $LIMITTIME ]; then
+		# Check ratio-limit-enabled
+		if [[ $RATIOENABLE == 1 ]]; then
+			LIMRATIO=$(cat $SETTINGFILE | grep '\"ratio-limit\":' | grep -Eo '([0-9\.])')
+			# Is the ratio greater than or equal to 2?
+			if python -c "exit(0 if $RATIO >= $LIMRATIO else 1)"; then
+				logging "LIMRATIO: $LIMRATIO"
 				torrentinfo $TORRENTID
-				torrentremove $TORRENTID 2
+				torrentremove $TORRENTID 1
 			fi
+		fi
+		# Date difference greater than or equal to LIMITTIME
+		if [ $DATEDIFF -ge $LIMITTIME ]; then
+			torrentinfo $TORRENTID
+			torrentremove $TORRENTID 2
 		fi
 	fi
 done
+logging " "
 exit 0;
