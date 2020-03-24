@@ -1,5 +1,5 @@
 #!/bin/bash
-# Torrent Done Script v0.9.15
+# Torrent Done Script v0.9.16
 #
 # Tested on:
 # Debian GNU/Linux 9.4 (stretch)
@@ -12,8 +12,8 @@
 LOGFILE="/var/log/transmission/torrentdone.log"
 TRANSIP="127.0.0.1"
 TRANSPORT="9091"
-TR_LOGIN="narakot"
-TR_PASSWORD="247050689Hh"
+TR_LOGIN="user"
+TR_PASSWORD="123456789"
 TR_TORRENT_DIR="$TR_TORRENT_DIR/"
 regex_ser="(LostFilm|TV|serial|Serial|novafilm|S[0-9]{2}|E[0-9]{2})"
 regex_film="(\([0-9]+\)\.(mkv|avi|mp4))"

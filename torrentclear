@@ -1,5 +1,5 @@
 #!/bin/bash
-# Torrent Clear Script v0.9.15
+# Torrent Clear Script v0.9.16
 
 # Script for Cron
 # Clear torrents in Transmission-daemon, ratio >= 2
@@ -20,11 +20,12 @@
 #
 
 # INIT
+SETTINGFILE="/etc/transmission-daemon/settings.json"
 LOGFILE="/var/log/transmission/torrentclear.log"
 TRANSIP="127.0.0.1"
 TRANSPORT="9091"
-TR_LOGIN="narakot"
-TR_PASSWORD="247050689Hh"
+TR_LOGIN="user"
+TR_PASSWORD="123456789"
 TR_CONNECT="transmission-remote $TRANSIP:$TRANSPORT -n $TR_LOGIN:$TR_PASSWORD"
 NOWDATE=$(date +%s) # Current date in seconds | It is advisable that NTP synchronization be configured on the OS
 LIMITTIME="604800" # After how many days (7 days = 604800 seconds) should the torrent be deleted, even if it has not reached the distribution coefficient = 2
@@ -92,6 +93,8 @@ function torrentremove
 }
 
 # ACTION
+# Get Ratio Limit
+
 # Check if transmission-daemon is running
 # If not, then immediately end the script
 TR_STATUS=$(systemctl status transmission-daemon | grep 'Active' | grep -Eo '\([a-z]+\)' | sed -r 's/(\(|\))//g')
