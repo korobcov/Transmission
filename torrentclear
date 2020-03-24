@@ -133,7 +133,6 @@ do
 			LIMRATIO=$(cat $SETTINGFILE | grep '\"ratio-limit\":' | grep -Eo '([0-9\.])')
 			# Is the ratio greater than or equal to 2?
 			if python -c "exit(0 if $RATIO >= $LIMRATIO else 1)"; then
-				logging "LIMRATIO: $LIMRATIO"
 				torrentinfo $TORRENTID
 				torrentremove $TORRENTID 1
 			fi
