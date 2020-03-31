@@ -1,5 +1,5 @@
 #!/bin/bash
-# Torrent Done Script v0.9.16
+# Torrent Done Script v1.0.0
 #
 # Tested on:
 # Debian GNU/Linux 9.4 (stretch)
@@ -136,18 +136,18 @@ if [ -f "$TR_TORRENT_DIR$TR_TORRENT_NAME" ]; then
 	FILE="$TR_TORRENT_DIR$TR_TORRENT_NAME"
 	# Is serial?
 	if [[ "${TR_TORRENT_NAME}" =~ $regex_ser ]]; then
-		serialprocess $FILE 1
+		serialprocess "$FILE" 1
 		exit 0;
 	# Is Film?
 	elif [[ "${TR_TORRENT_NAME}" =~ $regex_film ]]; then
 		# Is Film 3D?
 		if [[ "${TR_TORRENT_NAME}" =~ $regex_3d ]]; then
 			# Is Film 3D
-			filmprocess $FILE 1 2
+			filmprocess "$FILE" 1 2
 			exit 0;
 		else
 			# Is film 2D
-			filmprocess $FILE 1 1
+			filmprocess "$FILE" 1 1
 			exit 0;
 		fi
 	# No Serial and no Film. Other file
@@ -166,14 +166,14 @@ else
 			logging "###################### $TR_TORRENT_NAME #######################"
 			# Is serial?
 			if [[ "${TR_TORRENT_NAME}" =~ $regex_ser ]]; then
-				serialprocess $FILE 2
+				serialprocess "$FILE" 2
 			# Is Film?
 			elif [[ "${TR_TORRENT_NAME}" =~ $regex_film ]]; then
 				# Is Film 3D?
 				if [[ "${TR_TORRENT_NAME}" =~ $regex_3d ]]; then
-					filmprocess $FILE 2 2
+					filmprocess "$FILE" 2 2
 				else
-					filmprocess $FILE 2 1
+					filmprocess "$FILE" 2 1
 				fi
 			else
 				logging "File(s) \"$TR_TORRENT_NAME\" not defined as TV show or movie"
