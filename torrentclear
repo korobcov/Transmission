@@ -1,5 +1,5 @@
 #!/bin/bash
-# Torrent Clear Script v0.9.17
+# Torrent Clear Script v1.0.0
 
 # Script for Cron
 # Clear torrents in Transmission-daemon, ratio >= 2
@@ -22,6 +22,7 @@
 # INIT
 SETTINGFILE="/etc/transmission-daemon/settings.json"
 LOGFILE="/var/log/transmission/torrentclear.log"
+CLEARFLAG="dir"
 TRANSIP="127.0.0.1"
 TRANSPORT="9091"
 TR_LOGIN="user"
@@ -29,16 +30,17 @@ TR_PASSWORD="123456789"
 TR_CONNECT="transmission-remote $TRANSIP:$TRANSPORT -n $TR_LOGIN:$TR_PASSWORD"
 NOWDATE=$(date +%s) # Current date in seconds | It is advisable that NTP synchronization be configured on the OS
 LIMITTIME="604800" # After how many days (7 days = 604800 seconds) should the torrent be deleted, even if it has not reached the distribution coefficient = 2
+regex_file="\.(mkv|avi|mp4|ts|mov)$"
 
 # FUNCTIONS
 function logging
 {
 	# $1 - Text
 	if [ -e $LOGFILE ]; then
-		echo "`date '+%d.%m.%Y %H:%M:%S'`       $1" >> $LOGFILE
+		echo "`date '+%d.%m.%Y %H:%M:%S'`    $1" >> $LOGFILE
 	else
 		touch $LOGFILE
-		echo "`date '+%d.%m.%Y %H:%M:%S'`       $1" >> $LOGFILE
+		echo "`date '+%d.%m.%Y %H:%M:%S'`    $1" >> $LOGFILE
 	fi
 }
 function torrentinfo
@@ -63,10 +65,20 @@ function torrentremove
 {
 	# $1 - TORRENTID
 	# $2 - (1 - RATIO | 2 - DATETIME)
+	
 	# Stop and remove torrent from Transmission
 	local TR_NAME=$($TR_CONNECT -t$1 -i | grep 'Name:' | grep -Eo '\:\s(.*+)' | sed -r 's/^\:\s//')
 	$TR_CONNECT -t$1 -S
-	local REMOVE=$($TR_CONNECT -t$1 -r | grep -Eo '\"([a-z]+)\"' | sed -r 's/\"//g')
+	# Check File or Directory
+	if [[ "${TR_NAME}" =~ $regex_file ]]; then
+		# Is file
+		logging "Remove torrent and not delete file"
+		local REMOVE=$($TR_CONNECT -t$1 -r | grep -Eo '\"([a-z]+)\"' | sed -r 's/\"//g')
+	else
+		# Is directory
+		logging "Remove torrent and delete folder with files inside"
+		local REMOVE=$($TR_CONNECT -t$1 --remove-and-delete | grep -Eo '\"([a-z]+)\"' | sed -r 's/\"//g')
+	fi
 
 	# Delete check
 	if [[ $2 == 1 ]]; then
@@ -108,8 +120,7 @@ fi
 # Select all torrents with 100% completion and ratio = 2
 # Get all torrent IDs.
 # We process them in a cycle
-for TORRENTID in $($TR_CONNECT -l | grep -Eo '^ *([0-9]+)' | sed -r 's/[^0-9]//g')
-do
+for TORRENTID in $($TR_CONNECT -l | grep -Eo '^ *([0-9]+)' | sed -r 's/[^0-9]//g'); do
 	# GET TORRENT INFO
 	# We get the name of the processed torrent for logs
 	TR_NAME=$($TR_CONNECT -t$TORRENTID -i | grep 'Name:' | grep -Eo '\:\s(.*+)' | sed -r 's/^\:\s//')
@@ -126,7 +137,7 @@ do
 	# Verification of conditions
 	# Torrent complete?
 	logging "#=====================================================================================#"
-	logging "Check torrent $TR_NAME. PERCENT: $PERCENT; RATIO: $RATIO; STATE: $STATE; DATEDIFF: $DATEDIFF"
+	logging "Check torrent $TR_NAME:: PERCENT: $PERCENT; RATIO: $RATIO; STATE: $STATE; DATEDIFF: $DATEDIFF"
 	if python -c "exit(0 if $PERCENT == 100 else 1)"; then
 		# Check ratio-limit-enabled
 		if [[ $RATIOENABLE == 1 ]]; then
@@ -144,5 +155,5 @@ do
 		fi
 	fi
 done
-logging " "
+logging "//END"
 exit 0;
