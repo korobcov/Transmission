@@ -1,7 +1,7 @@
 # Скрипты обработчики для Transmission-daemon и Transmission-remote
  
  ![GitHub](https://img.shields.io/github/license/GregoryGost/Transmission)
- ![GitHub](https://img.shields.io/github/release-date/GregoryGost/Transmission)
+ ![GitHub](https://img.shields.io/github/repo-size/GregoryGost/Transmission)
  ![GitHub](https://img.shields.io/github/languages/code-size/GregoryGost/Transmission)
 
 # Скрипт torrentdone.sh
