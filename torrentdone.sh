@@ -1,5 +1,5 @@
 #!/bin/bash
-# Torrent Done Script v1.1.0
+# Torrent Done Script v1.2.0
 # Author: GregoryGost <info@gregory-gost.ru>
 #
 # Latest version: https://github.com/GregoryGost/Transmission/blob/master/torrentdone.sh
@@ -45,6 +45,7 @@ TRANSPORT="9091"
 TR_LOGIN="user"
 TR_PASSWORD="123456789"
 TR_TORRENT_DIR="$TR_TORRENT_DIR/"
+TR_TORRENT_NAME="$TR_TORRENT_NAME"
 regex_ser="(LostFilm|TV|serial|Serial|novafilm|S[0-9]{2}|E[0-9]{2})"
 regex_film="(\([0-9]+\)\.(mkv|avi|mp4))"
 regex_3d="(\s(3D|3d)\s)"
@@ -65,6 +66,12 @@ function serialprocess
 	# $1 - Full file path = $TR_TORRENT_DIR + $TR_TORRENT_NAME
 	# $2 - Is File or Directory (1 - File | 2 - Directory)
 	# $3 - Base torrent directory name (only $2 - Directory) !!!
+	
+	if ! [[ -f "$1" ]]; then
+		# Additional check for file existence
+		logging "Error: Serial file not found into folder"
+		exit 0;
+	fi
 	
 	# If File
 	if [ $2 == 1 ]; then
@@ -151,8 +158,15 @@ function filmprocess
 	# $3 - 3D or 2D (1 - 2D | 2 - 3D)
 	# $4 - Base torrent directory name (only $2 - Directory) !!!
 	
+	if ! [[ -f "$1" ]]; then
+		# Additional check for file existence
+		logging "Error: Film file not found into folder"
+		exit 0;
+	fi
+	
 	# If File
 	if [ $2 == 1 ]; then
+		
 		logging "This File is Film..."
 		# Get Film name
 		local TR_TORRENT_NAME=`/usr/bin/basename "$1"` # example result: name.mkv
@@ -239,17 +253,18 @@ function filmprocess
 # ACTION
 # Start recording torrent information in a log file
 logging "#========================# TORRENT ID: $TR_TORRENT_ID FINISH #========================#"
-logging "VER:		Transmission - v$TR_APP_VERSION"
-logging "DIR:		$TR_TORRENT_DIR"
-logging "NAME:		$TR_TORRENT_NAME"
+logging "VER:	Transmission - v$TR_APP_VERSION"
+logging "DIR:	$TR_TORRENT_DIR"
+logging "NAME:	$TR_TORRENT_NAME"
 logging "DTIME:	$TR_TIME_LOCALTIME"
-logging "HASH:		$TR_TORRENT_HASH"
-
+logging "HASH:	$TR_TORRENT_HASH"
+logging "#========================#"
 logging "Start Torrent process - $TR_TORRENT_NAME"
 
 # Check File or Directory
-if [ -f "$TR_TORRENT_DIR$TR_TORRENT_NAME" ]; then
+if [[ -f "$TR_TORRENT_DIR$TR_TORRENT_NAME" ]]; then
 	# Is File
+	logging "#========================#"
 	logging "Is File..."
 	
 	FILE="$TR_TORRENT_DIR$TR_TORRENT_NAME"
@@ -276,14 +291,13 @@ if [ -f "$TR_TORRENT_DIR$TR_TORRENT_NAME" ]; then
 	fi
 else
 	# Is Directory
+	logging "#========================#"
 	logging "Is Directory..."
 	
 	# Is serial?
 	if [[ "${TR_TORRENT_NAME}" =~ $regex_ser ]]; then
-		logging "###################### $TR_TORRENT_NAME #######################"
 		for FILE in "$TR_TORRENT_DIR$TR_TORRENT_NAME"/*; do
 			if  [[ $FILE != *.part ]]; then
-				logging "###################### $FILE"
 				serialprocess "$FILE" 2 "$TR_TORRENT_NAME"
 			fi
 		done
@@ -293,20 +307,16 @@ else
 		# Is Film 3D?
 		if [[ "${TR_TORRENT_NAME}" =~ $regex_3d ]]; then
 			# Is Film 3D
-			logging "###################### $TR_TORRENT_NAME #######################"
 			for FILE in "$TR_TORRENT_DIR$TR_TORRENT_NAME"/*; do
 				if  [[ $FILE != *.part ]]; then
-					logging "###################### $FILE"
 					filmprocess "$FILE" 2 2 "$TR_TORRENT_NAME"
 				fi
 			done
 			exit 0;
 		else
 			# Is film 2D
-			logging "###################### $TR_TORRENT_NAME #######################"
 			for FILE in "$TR_TORRENT_DIR$TR_TORRENT_NAME"/*; do
 				if  [[ $FILE != *.part ]]; then
-					logging "###################### $FILE"
 					filmprocess "$FILE" 2 1 "$TR_TORRENT_NAME"
 				fi
 			done
@@ -314,6 +324,7 @@ else
 		fi
 	# No Serial and no Film. Other file
 	else
+		logging "#========================#"
 		logging "File(s) \"$TR_TORRENT_NAME\" not defined as TV show or movie"
 		exit 0;
 	fi
