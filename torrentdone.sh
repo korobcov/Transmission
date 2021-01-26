@@ -1,5 +1,5 @@
 #!/bin/bash
-# Torrent Done Script v1.2.0
+# Torrent Done Script v1.2.1
 # Author: GregoryGost <info@gregory-gost.ru>
 #
 # Latest version: https://github.com/GregoryGost/Transmission/blob/master/torrentdone.sh
@@ -39,7 +39,6 @@
 
 # INIT
 LOGFILE="/var/log/transmission/torrentdone.log"
-CLEARFLAG="dir"
 TRANSIP="127.0.0.1"
 TRANSPORT="9091"
 TR_LOGIN="user"
@@ -128,14 +127,6 @@ function serialprocess
 		if ! [ -d $SERIALPATH ]; then
 			logging "Path $SERIALPATH does not exist. Create the missing folders..."
 			mkdir -m 777 -p $SERIALPATH
-		fi
-		# Check or Create directory flag for torrentclear script
-		if ! [ -e "$SERIALPATH$CLEARFLAG" ]; then
-			touch "$SERIALPATH$CLEARFLAG"
-			echo "$TR_TORRENT_NAME" >> "$SERIALPATH$CLEARFLAG"
-			logging "Create directory flag in $SERIALPATH"
-		else
-			echo "$TR_TORRENT_NAME" >> "$SERIALPATH$CLEARFLAG"
 		fi
 		# Copy Serial file
 		logging "Copy file $1 to folder $SERIALPATH"
@@ -228,14 +219,6 @@ function filmprocess
 		if ! [ -d $FILMPATH ]; then
 			logging "Path $FILMPATH does not exist. Create the missing folders."
 			mkdir -m 777 -p $FILMPATH
-		fi
-		# Check or Create directory flag for torrentclear script
-		if ! [ -e "$FILMPATH$CLEARFLAG" ]; then
-			touch "$FILMPATH$CLEARFLAG"
-			echo "$TR_TORRENT_NAME" >> "$FILMPATH$CLEARFLAG"
-			logging "Create directory flag in $FILMPATH"
-		else
-			echo "$TR_TORRENT_NAME" >> "$FILMPATH$CLEARFLAG"
 		fi
 		# Copy Film file
 		logging "Copy file $1 to folder $FILMPATH"

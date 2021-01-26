@@ -1,5 +1,5 @@
 #!/bin/bash
-# Torrent Clear Script v1.0.0
+# Torrent Clear Script v1.0.1
 
 # Script for Cron
 # Clear torrents in Transmission-daemon, ratio >= 2
@@ -22,7 +22,6 @@
 # INIT
 SETTINGFILE="/etc/transmission-daemon/settings.json"
 LOGFILE="/var/log/transmission/torrentclear.log"
-CLEARFLAG="dir"
 TRANSIP="127.0.0.1"
 TRANSPORT="9091"
 TR_LOGIN="user"
