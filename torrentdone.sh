@@ -243,6 +243,7 @@ logging "DTIME:	$TR_TIME_LOCALTIME"
 logging "HASH:	$TR_TORRENT_HASH"
 logging "#========================#"
 logging "Start Torrent process - $TR_TORRENT_NAME"
+logging "Check path: $TR_TORRENT_DIR$TR_TORRENT_NAME"
 
 # Check File or Directory
 if [[ -f "$TR_TORRENT_DIR$TR_TORRENT_NAME" ]]; then
