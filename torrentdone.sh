@@ -1,5 +1,5 @@
 #!/bin/bash
-# Torrent Done Script v1.2.1
+# Torrent Done Script v1.2.2
 # Author: GregoryGost <info@gregory-gost.ru>
 #
 # Latest version: https://github.com/GregoryGost/Transmission/blob/master/torrentdone.sh
@@ -46,7 +46,8 @@ TR_PASSWORD="123456789"
 TR_TORRENT_DIR="$TR_TORRENT_DIR/"
 TR_TORRENT_NAME="$TR_TORRENT_NAME"
 regex_ser="(LostFilm|TV|serial|Serial|novafilm|S[0-9]{2}|E[0-9]{2})"
-regex_film="(\([0-9]+\)\.(mkv|avi|mp4))"
+regex_film="([\.\s\(\_](19|20)\d{2}[\.\s\)\_]\.(mkv|avi|mp4))"
+regex_film_dir="([\.\s\(\_](19|20)\d{2}[\-\.\_\s](19|20)\d{2}[\.\s\)\_])"
 regex_3d="(\s(3D|3d)\s)"
 
 # FUNCTIONS
@@ -287,7 +288,7 @@ else
 		done
 		exit 0;
 	# Is Film?
-	elif [[ "${TR_TORRENT_NAME}" =~ $regex_film ]]; then
+	elif [[ "${TR_TORRENT_NAME}" =~ $regex_film_dir ]]; then
 		# Is Film 3D?
 		if [[ "${TR_TORRENT_NAME}" =~ $regex_3d ]]; then
 			# Is Film 3D
