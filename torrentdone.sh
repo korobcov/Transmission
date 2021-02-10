@@ -1,5 +1,5 @@
 #!/bin/bash
-# Torrent Done Script v1.2.2
+# Torrent Done Script v1.2.3
 # Author: GregoryGost <info@gregory-gost.ru>
 #
 # Latest version: https://github.com/GregoryGost/Transmission/blob/master/torrentdone.sh
@@ -41,14 +41,14 @@
 LOGFILE="/var/log/transmission/torrentdone.log"
 TRANSIP="127.0.0.1"
 TRANSPORT="9091"
-TR_LOGIN="user"
-TR_PASSWORD="123456789"
+TR_LOGIN="narakot"
+TR_PASSWORD="247050689Hh"
 TR_TORRENT_DIR="$TR_TORRENT_DIR/"
 TR_TORRENT_NAME="$TR_TORRENT_NAME"
 regex_ser="(LostFilm|TV|serial|Serial|novafilm|S[0-9]{2}|E[0-9]{2})"
-regex_film="([\.\s\(\_](19|20)\d{2}[\.\s\)\_]\.(mkv|avi|mp4))"
-regex_film_dir="([\.\s\(\_](19|20)\d{2}[\-\.\_\s](19|20)\d{2}[\.\s\)\_])"
-regex_3d="(\s(3D|3d)\s)"
+regex_film="[.(_-\s](19|20)[0-9]{2}[.)_-\s]\.(mkv|avi|mp4)"
+regex_film_dir="[.(_-\s](19|20)[0-9]{2}[-._\s](19|20)[0-9]{2}[.)_-\s]"
+regex_3d="\s(3D|3d)\s"
 
 # FUNCTIONS
 function logging
