@@ -68,14 +68,10 @@ function torrentremove
 	# Stop and remove torrent from Transmission
 	local TR_NAME=$($TR_CONNECT -t$1 -i | grep 'Name:' | grep -Eo '\:\s(.*+)' | sed -r 's/^\:\s//')
 	$TR_CONNECT -t$1 -S
-	# Check File or Directory
-	if [[ "${TR_NAME}" =~ $regex_file ]]; then
-		# Is file
-		logging "Remove torrent and not delete file"
-		local REMOVE=$($TR_CONNECT -t$1 -r | grep -Eo '\"([a-z]+)\"' | sed -r 's/\"//g')
-	else
-		# Is directory
-		logging "Remove torrent and delete folder with files inside"
+	
+	
+		
+		logging "Remove torrent and delete"
 		local REMOVE=$($TR_CONNECT -t$1 --remove-and-delete | grep -Eo '\"([a-z]+)\"' | sed -r 's/\"//g')
 	fi
 
