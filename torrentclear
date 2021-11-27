@@ -20,8 +20,8 @@
 #
 
 # INIT
-SETTINGFILE="/etc/transmission-daemon/settings.json"
-LOGFILE="/var/log/transmission/torrentclear.log"
+SETTINGFILE="/config/settings.json"
+LOGFILE="/config/log/torrentclear.log"
 TRANSIP="127.0.0.1"
 TRANSPORT="9091"
 TR_LOGIN="user"
@@ -98,18 +98,6 @@ function torrentremove
 	fi
 }
 
-# ACTION
-# Get Ratio Limit
-RATIOENABLE=$(cat $SETTINGFILE | grep '\"ratio-limit-enabled\":' | grep -Eo '(true|false)' | sed -e 's/true/1/' -e 's/false/0/')
-
-# Check if transmission-daemon is running
-# If not, then immediately end the script
-TR_STATUS=$(systemctl status transmission-daemon | grep 'Active' | grep -Eo '\([a-z]+\)' | sed -r 's/(\(|\))//g')
-if [[ $TR_STATUS != "running" ]]; then
-	logging "#=====================================================================================#"
-	logging "ERR: The transmission-daemon service is not running! Further processing is not performed. Exit!"
-	exit 0;
-fi
 
 # If the service is running, we continue.
 # Select all torrents with 100% completion and ratio = 2
@@ -133,7 +121,7 @@ for TORRENTID in $($TR_CONNECT -l | grep -Eo '^ *([0-9]+)' | sed -r 's/[^0-9]//g
 	# Torrent complete?
 	logging "#=====================================================================================#"
 	logging "Check torrent $TR_NAME:: PERCENT: $PERCENT; RATIO: $RATIO; STATE: $STATE; DATEDIFF: $DATEDIFF"
-	if python -c "exit(0 if $PERCENT == 100 else 1)"; then
+	if python3 -c "exit(0 if $PERCENT == 100 else 1)"; then
 		# Check ratio-limit-enabled
 		if [[ $RATIOENABLE == 1 ]]; then
 			LIMRATIO=$(cat $SETTINGFILE | grep '\"ratio-limit\":' | grep -Eo '([0-9\.])')
